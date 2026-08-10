@@ -1,17 +1,32 @@
-image: node:20
+name: Scrape DSE Prices
 
-scrape:
-  stage: build
-  rules:
-    # Only actually run when triggered by a Schedule (see setup notes below)
-    # — prevents this from also firing on every normal git push, which
-    # would burn through the 400 free minutes/month very fast.
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-  script:
-    - cd worker
-    - npm install
-    - node scrapeOnce.js
-  variables:
-    SKIP_MARKET_HOURS_CHECK: "false"
-    # MONGODB_URI is NOT set here — add it as a masked CI/CD variable in
-    # GitLab's UI instead (Settings > CI/CD > Variables), never commit it.
+on:
+  schedule:
+    # Every 15 minutes, but ONLY during DSE trading hours (Sun–Thu, 10:00am–
+    # 2:30pm Bangladesh time = 04:00–08:30 UTC). Restricting the trigger
+    # itself — not just relying on the script's internal market-hours check
+    # — avoids burning compute minutes on runs that would just exit early.
+    - cron: "*/15 4-8 * * 0-4"
+  workflow_dispatch: {} # lets you manually trigger a run from the Actions tab
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run scraper
+        run: node scrapeOnce.js
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SKIP_MARKET_HOURS_CHECK: "false"
