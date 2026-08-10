@@ -1,0 +1,9 @@
+node_modules
+
+web/.env.local
+worker/.env
+atlas-credentials.env
+connection-ss.png
+mongodb-connection-data.txt
+package-lock.json
+client_secret_1043437058689-aloj5e3lfga1blldd8aenfc09a09g18f.apps.googleusercontent.com.json
