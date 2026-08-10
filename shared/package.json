@@ -1,0 +1,8 @@
+{
+  "name": "dse-app-shared",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "mongoose": "^8.9.0"
+  }
+}
