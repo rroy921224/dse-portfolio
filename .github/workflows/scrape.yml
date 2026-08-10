@@ -1,0 +1,17 @@
+image: node:20
+
+scrape:
+  stage: build
+  rules:
+    # Only actually run when triggered by a Schedule (see setup notes below)
+    # — prevents this from also firing on every normal git push, which
+    # would burn through the 400 free minutes/month very fast.
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - cd worker
+    - npm install
+    - node scrapeOnce.js
+  variables:
+    SKIP_MARKET_HOURS_CHECK: "false"
+    # MONGODB_URI is NOT set here — add it as a masked CI/CD variable in
+    # GitLab's UI instead (Settings > CI/CD > Variables), never commit it.
