@@ -12,9 +12,6 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: worker
     steps:
       - uses: actions/checkout@v4
 
@@ -22,11 +19,17 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - name: Install shared dependencies
         run: npm install
+        working-directory: shared
+
+      - name: Install worker dependencies
+        run: npm install
+        working-directory: worker
 
       - name: Run scraper
         run: node scrapeOnce.js
+        working-directory: worker
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           SKIP_MARKET_HOURS_CHECK: "false"
