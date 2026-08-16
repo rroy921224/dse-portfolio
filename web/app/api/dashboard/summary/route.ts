@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { computeHoldings, round2 } from "@/lib/portfolioCalculations";
+import {
+  computeHoldings,
+  round2,
+  type TransactionLike,
+} from "@/lib/portfolioCalculations";
 import { connectDB, Transaction, Price } from "../../../../../shared/index.js";
 
 export async function GET() {
@@ -17,7 +21,9 @@ export async function GET() {
   const transactions = await Transaction.find({
     userId: session.user.id,
   }).lean();
-  const holdingsMap = computeHoldings(transactions);
+  const holdingsMap = computeHoldings(
+    transactions as unknown as TransactionLike[],
+  );
   const activeHoldings = [...holdingsMap.values()].filter(
     (h) => h.quantity > 0,
   );
