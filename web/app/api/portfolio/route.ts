@@ -57,7 +57,6 @@ export async function GET() {
     };
   });
 
-  // Realized P/L includes fully-closed positions too, not just still-held ones
   const totalRealizedPL = round2(
     allHoldings.reduce((sum, h) => sum + h.realizedPL, 0),
   );
@@ -106,7 +105,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: parsed.error.errors[0]?.message ?? "Invalid input",
+          error: parsed.error.issues[0]?.message ?? "Invalid input",
         },
         { status: 400 },
       );
@@ -119,8 +118,6 @@ export async function POST(req: Request) {
     await connectDB();
 
     if (type === "sell") {
-      // Prevent selling more shares than currently held, based on all prior
-      // transactions for this stock.
       const existingTransactions = await Transaction.find({
         userId: session.user.id,
         tradingCode,

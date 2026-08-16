@@ -33,7 +33,7 @@ export async function PUT(
       return NextResponse.json(
         {
           ok: false,
-          error: parsed.error.errors[0]?.message ?? "Invalid input",
+          error: parsed.error.issues[0]?.message ?? "Invalid input",
         },
         { status: 400 },
       );
@@ -53,10 +53,6 @@ export async function PUT(
       );
     }
 
-    // NOTE: this does not re-validate that editing an old BUY still leaves
-    // enough quantity for any SELLs that happened after it — an edge case
-    // worth handling later (e.g. re-run computeHoldings across all of this
-    // stock's transactions after the edit, reject if any point goes negative).
     if (parsed.data.quantity !== undefined)
       existing.quantity = parsed.data.quantity;
     if (parsed.data.price !== undefined) existing.price = parsed.data.price;
