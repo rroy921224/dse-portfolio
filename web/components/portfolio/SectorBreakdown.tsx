@@ -89,10 +89,19 @@ export default function SectorBreakdown({ holdings }: { holdings: Holding[] }) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number, _name, props) => [
-                  `৳${value.toLocaleString()} (${props.payload.percent.toFixed(1)}%)`,
-                  props.payload.sector,
-                ]}
+                formatter={(value, _name, props) => {
+                  const numValue =
+                    typeof value === "number" ? value : Number(value);
+                  const payload = props?.payload as
+                    | { sector?: string; percent?: number }
+                    | undefined;
+                  const percent = payload?.percent ?? 0;
+                  const sector = payload?.sector ?? "";
+                  return [
+                    `৳${numValue.toLocaleString()} (${percent.toFixed(1)}%)`,
+                    sector,
+                  ];
+                }}
               />
               <Legend
                 layout="vertical"
