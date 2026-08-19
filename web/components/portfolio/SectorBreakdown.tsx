@@ -18,6 +18,7 @@ interface Holding {
 interface SectorSummary {
   sector: string;
   stockCount: number;
+  tradingCodes: string[];
   invested: number;
   percent: number;
 }
@@ -43,18 +44,27 @@ const COLORS = [
 function computeSectorSummary(holdings: Holding[]): SectorSummary[] {
   const grandTotal = holdings.reduce((sum, h) => sum + h.totalInvested, 0);
 
-  const bySector = new Map<string, { invested: number; count: number }>();
+  const bySector = new Map<
+    string,
+    { invested: number; count: number; tradingCodes: string[] }
+  >();
   for (const h of holdings) {
-    const existing = bySector.get(h.sector) ?? { invested: 0, count: 0 };
+    const existing = bySector.get(h.sector) ?? {
+      invested: 0,
+      count: 0,
+      tradingCodes: [],
+    };
     existing.invested += h.totalInvested;
     existing.count += 1;
+    existing.tradingCodes.push(h.tradingCode);
     bySector.set(h.sector, existing);
   }
 
   return [...bySector.entries()]
-    .map(([sector, { invested, count }]) => ({
+    .map(([sector, { invested, count, tradingCodes }]) => ({
       sector,
       stockCount: count,
+      tradingCodes,
       invested,
       percent: grandTotal > 0 ? (invested / grandTotal) * 100 : 0,
     }))
@@ -119,25 +129,30 @@ export default function SectorBreakdown({ holdings }: { holdings: Holding[] }) {
               <tr>
                 <th className="py-2">Sector</th>
                 <th className="py-2">Stocks</th>
-                <th className="py-2">Invested</th>
-                <th className="py-2">% of Portfolio</th>
+                <th className="py-2">Investment</th>
               </tr>
             </thead>
             <tbody>
               {data.map((row, i) => (
                 <tr key={row.sector} className="border-b last:border-0">
-                  <td className="py-2 flex items-center gap-2">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: COLORS[i % COLORS.length] }}
-                    />
-                    {row.sector}
+                  <td className="py-2 align-top">
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                      />
+                      {row.sector}
+                    </span>
                   </td>
-                  <td className="py-2 text-gray-500">
-                    {row.stockCount} {row.stockCount === 1 ? "stock" : "stocks"}
+                  <td className="py-2 align-top text-gray-500">
+                    {row.tradingCodes.join(", ")}
                   </td>
-                  <td className="py-2">৳{row.invested.toLocaleString()}</td>
-                  <td className="py-2">{row.percent.toFixed(1)}%</td>
+                  <td className="py-2 align-top">
+                    <div>৳{row.invested.toLocaleString()}</div>
+                    <div className="text-xs text-gray-400">
+                      {row.percent.toFixed(1)}%
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
