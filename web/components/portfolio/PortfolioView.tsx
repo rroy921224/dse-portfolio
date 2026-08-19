@@ -4,9 +4,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import AddTransactionForm from "./AddTransactionForm";
 import HoldingsTable from "./HoldingsTable";
+import SectorBreakdown from "./SectorBreakdown";
 
 interface Holding {
   tradingCode: string;
+  sector: string;
   quantity: number;
   avgCost: number;
   totalInvested: number;
@@ -46,8 +48,6 @@ export default function PortfolioView() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["portfolio"],
     queryFn: fetchPortfolio,
-    // Matches the worker's ~30s scrape cycle — no point refetching faster,
-    // the underlying price data wouldn't have changed anyway.
     refetchInterval: 30_000,
   });
 
@@ -68,6 +68,10 @@ export default function PortfolioView() {
   return (
     <div>
       <SummaryCards summary={summary} />
+
+      <div className="mt-6">
+        <SectorBreakdown holdings={holdings} />
+      </div>
 
       <div className="flex justify-between items-center my-6">
         <h2 className="text-lg font-medium">Holdings</h2>

@@ -6,7 +6,12 @@ import {
   round2,
   type TransactionLike,
 } from "@/lib/portfolioCalculations";
-import { connectDB, Transaction, Price } from "../../../../shared/index.js";
+import {
+  connectDB,
+  Transaction,
+  Price,
+  Company,
+} from "../../../../shared/index.js";
 
 export async function GET() {
   const session = await auth();
@@ -30,10 +35,12 @@ export async function GET() {
   const activeHoldings = allHoldings.filter((h) => h.quantity > 0);
   const tradingCodes = activeHoldings.map((h) => h.tradingCode);
 
-  const prices = await Price.find({
-    tradingCode: { $in: tradingCodes },
-  }).lean();
+  const [prices, companies] = await Promise.all([
+    Price.find({ tradingCode: { $in: tradingCodes } }).lean(),
+    Company.find({ tradingCode: { $in: tradingCodes } }).lean(),
+  ]);
   const priceMap = new Map(prices.map((p) => [p.tradingCode, p]));
+  const companyMap = new Map(companies.map((c) => [c.tradingCode, c]));
 
   let totalInvested = 0;
   let totalCurrentValue = 0;
@@ -51,6 +58,7 @@ export async function GET() {
 
     return {
       tradingCode: h.tradingCode,
+      sector: companyMap.get(h.tradingCode)?.sector ?? "Unknown",
       quantity: h.quantity,
       avgCost: round2(h.avgCost),
       totalInvested: round2(h.totalInvested),
