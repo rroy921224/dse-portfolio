@@ -1,14 +1,13 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { timeAgo } from "@/lib/marketHours";
 
 interface PriceData {
   ltp: number;
   change: number;
   changePercent: number;
-  high?: number;
-  low?: number;
-  volume?: number;
+  scrapedAt?: string | null;
 }
 
 interface HoldingData {
@@ -43,8 +42,6 @@ export default function StockCard({
 
   const isUp = (price?.change ?? 0) >= 0;
 
-  // Inline P/L computed against the CURRENT live price, not a cached value —
-  // so it visibly updates the moment the price data refreshes, per spec.
   let plInfo: { pl: number; plPercent: number } | null = null;
   if (holding && price) {
     const currentValue = holding.quantity * price.ltp;
@@ -76,6 +73,9 @@ export default function StockCard({
             {isUp ? "+" : ""}
             {price.change} ({isUp ? "+" : ""}
             {price.changePercent}%)
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Updated {timeAgo(price.scrapedAt)}
           </p>
         </>
       ) : (

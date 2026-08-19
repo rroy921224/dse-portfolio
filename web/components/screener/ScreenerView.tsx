@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import AddStockPanel from "./AddStockPanel";
 import StockCard from "./StockCard";
+import { isMarketOpen } from "@/lib/marketHours";
 
 interface WatchlistEntry {
   tradingCode: string;
@@ -12,6 +13,7 @@ interface WatchlistEntry {
     ltp: number;
     change: number;
     changePercent: number;
+    scrapedAt?: string | null;
   } | null;
 }
 
@@ -53,6 +55,7 @@ const REFRESH_OPTIONS = [
 
 export default function ScreenerView() {
   const [intervalMs, setIntervalMs] = useState<number | null>(30_000);
+  const marketOpen = isMarketOpen();
 
   const watchlistQuery = useQuery({
     queryKey: ["watchlist"],
@@ -60,8 +63,6 @@ export default function ScreenerView() {
     refetchInterval: intervalMs ?? false,
   });
 
-  // Holdings don't need aggressive polling — they only change when the user
-  // records a transaction, not every scrape cycle.
   const portfolioQuery = useQuery({
     queryKey: ["portfolio-for-screener"],
     queryFn: fetchPortfolio,
@@ -82,6 +83,13 @@ export default function ScreenerView() {
 
   return (
     <div>
+      {!marketOpen && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-2 mb-4">
+          Market is currently closed (DSE trades Sun–Thu, 10:00am–2:30pm BD
+          time). Prices below are from the last available scrape, not live.
+        </div>
+      )}
+
       <AddStockPanel watchlistCodes={watchlistCodes} />
 
       <div className="flex items-center justify-between mb-4">
