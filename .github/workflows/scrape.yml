@@ -7,7 +7,12 @@ on:
     # itself — not just relying on the script's internal market-hours check
     # — avoids burning compute minutes on runs that would just exit early.
     - cron: "*/15 4-8 * * 0-4"
-  workflow_dispatch: {} # lets you manually trigger a run from the Actions tab
+  workflow_dispatch:
+    inputs:
+      skip_market_hours_check:
+        description: "Force a real scrape even if the market is currently closed (for manual testing)"
+        type: boolean
+        default: true
 
 jobs:
   scrape:
@@ -32,4 +37,8 @@ jobs:
         working-directory: worker
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          SKIP_MARKET_HOURS_CHECK: "false"
+          # On a schedule run, this input doesn't exist, so it defaults to
+          # "false" — market hours are enforced as normal. On a MANUAL run,
+          # it defaults to "true" (per the input above) — always scrapes,
+          # useful for testing regardless of what time it is.
+          SKIP_MARKET_HOURS_CHECK: ${{ github.event.inputs.skip_market_hours_check || 'false' }}
