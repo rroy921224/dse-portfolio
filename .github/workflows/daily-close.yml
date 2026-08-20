@@ -1,0 +1,42 @@
+name: Save Daily Closing Prices
+
+on:
+  schedule:
+    # Once daily, 08:45 UTC = 2:45pm Bangladesh time — shortly after DSE's
+    # ~2:30pm close, giving a small buffer for the scraper's last run of
+    # the day to have landed. Sun–Thu only (day-of-week 0-4).
+    - cron: "45 8 * * 0-4"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Save regardless of what day it is (for manual testing)"
+        type: boolean
+        default: true
+
+jobs:
+  save-daily-close:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install shared dependencies
+        run: npm install
+        working-directory: shared
+
+      - name: Install worker dependencies
+        run: npm install
+        working-directory: worker
+
+      - name: Save daily close
+        run: node saveDailyClose.js
+        working-directory: worker
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          # On schedule, this input doesn't exist -> defaults to "false"
+          # (real trading-day check enforced). On manual run, defaults to
+          # "true" per the input above -> always saves, for testing.
+          FORCE_SAVE: ${{ github.event.inputs.force || 'false' }}
