@@ -6,6 +6,7 @@ import EditTransactionModal from "./EditTransactionModal";
 
 interface Holding {
   tradingCode: string;
+  sector: string;
   quantity: number;
   avgCost: number;
   totalInvested: number;
@@ -137,43 +138,75 @@ function HoldingRow({
                     <th className="text-left py-1">Qty</th>
                     <th className="text-left py-1">Price</th>
                     <th className="text-left py-1">Commission</th>
+                    <th className="text-left py-1">P/L</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((t) => (
-                    <tr key={t._id} className="border-t">
-                      <td className="py-1">
-                        {new Date(t.date).toLocaleDateString()}
-                      </td>
-                      <td className="py-1 capitalize">{t.type}</td>
-                      <td className="py-1">{t.quantity}</td>
-                      <td className="py-1">৳{t.price}</td>
-                      <td className="py-1 text-gray-500">
-                        {t.commissionPercent ?? 0}%
-                      </td>
-                      <td className="py-1 text-right space-x-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTransaction(t);
-                          }}
-                          className="text-blue-500 hover:underline"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteMutation.mutate(t._id);
-                          }}
-                          className="text-red-500 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {transactions.map((t) => {
+                    // Buy: "if you'd held this purchase, here's the paper P/L
+                    // at today's price." Sell: "here's what you'd have
+                    // gained/lost had you held instead of selling" — NOT
+                    // "profit from the sale itself." Different meaning,
+                    // hence the distinguishing caption under each value.
+                    const effectivePrice =
+                      t.type === "buy"
+                        ? t.price * (1 + (t.commissionPercent ?? 0) / 100)
+                        : t.price * (1 - (t.commissionPercent ?? 0) / 100);
+                    const pl =
+                      (holding.currentPrice - effectivePrice) * t.quantity;
+                    const isProfit = pl >= 0;
+                    const caption =
+                      t.type === "buy"
+                        ? "if held today"
+                        : "vs. holding instead";
+
+                    return (
+                      <tr key={t._id} className="border-t">
+                        <td className="py-1">
+                          {new Date(t.date).toLocaleDateString()}
+                        </td>
+                        <td className="py-1 capitalize">{t.type}</td>
+                        <td className="py-1">{t.quantity}</td>
+                        <td className="py-1">৳{t.price}</td>
+                        <td className="py-1 text-gray-500">
+                          {t.commissionPercent ?? 0}%
+                        </td>
+                        <td className="py-1">
+                          <div
+                            className={
+                              isProfit ? "text-green-600" : "text-red-600"
+                            }
+                          >
+                            {isProfit ? "+" : ""}৳{pl.toFixed(2)}
+                          </div>
+                          <div className="text-gray-400 text-[10px]">
+                            {caption}
+                          </div>
+                        </td>
+                        <td className="py-1 text-right space-x-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTransaction(t);
+                            }}
+                            className="text-blue-500 hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteMutation.mutate(t._id);
+                            }}
+                            className="text-red-500 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
