@@ -1,12 +1,14 @@
 import mongoose from "mongoose";
 
 /**
- * One document per stock PER DAY (not per scrape cycle) — this is what
- * PriceHistory was originally meant to be before we found it generating
- * hundreds of thousands of docs/day. ~395 docs/day here, not per-15-min.
+ * One document per stock PER DAY (not per scrape cycle). Populated by a
+ * separate daily job (worker/saveDailyClose.js), run once shortly after
+ * market close, NOT by the regular 15-min price scraper.
  *
- * Populated by a separate daily job (worker/saveDailyClose.js), run once
- * shortly after market close, NOT by the regular price scraper.
+ * Field coverage note: "adjusted opening price" was requested but is NOT
+ * provided by bdstock.org's /latest endpoint at all (confirmed by
+ * inspecting the raw response) — so it's intentionally absent here. All
+ * other requested daily fields ARE available and captured below.
  */
 const DailyCloseSchema = new mongoose.Schema(
   {
@@ -17,26 +19,43 @@ const DailyCloseSchema = new mongoose.Schema(
       trim: true,
     },
     date: {
-      // Stored as "YYYY-MM-DD" (Bangladesh calendar date), not a full
-      // Date/timestamp — we only care about the calendar day, and a string
-      // key makes the upsert query trivial and avoids timezone ambiguity.
+      // "YYYY-MM-DD" Bangladesh calendar date — string key keeps the
+      // upsert query trivial and avoids timezone ambiguity.
       type: String,
       required: true,
     },
     close: {
+      // Convenience field: closep if available (>0), else falls back to
+      // ltp. Kept for any code that just wants "the" closing number
+      // without caring which underlying field it came from.
       type: Number,
       required: true,
     },
     source: {
-      // Which raw field this value came from — useful for knowing, in
-      // hindsight, whether it was the exchange's settled close or a
-      // fallback to last-traded-price (see notes on closep's reliability).
+      // Which field `close` above actually came from.
       type: String,
       enum: ["closep", "ltp"],
       required: true,
     },
+    ltp: {
+      // Last traded price, always stored explicitly (regardless of what
+      // `close`/`source` resolved to), since "last trading price" was
+      // requested as its own distinct value.
+      type: Number,
+    },
+    closep: {
+      // Exchange's settled closing price, stored explicitly. May be 0 or
+      // absent on days it wasn't available from the source — check
+      // `source` above to know whether `close` used this or fell back.
+      type: Number,
+    },
+    high: Number,
+    low: Number,
+    tradeCount: Number,
+    volume: Number,
+    valueMn: Number,
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 // One row per stock per day — re-running the job the same day upserts,

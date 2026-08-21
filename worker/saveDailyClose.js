@@ -6,7 +6,10 @@ import { logger } from "./src/lib/logger.js";
 /**
  * Run ONCE, shortly after market close. Reads whatever's currently sitting
  * in `Price` (the live snapshot collection) and freezes it into `DailyClose`
- * — one row per stock for today's date.
+ * — one row per stock for today's date, capturing all daily fields
+ * available from the scraper (LTP, closep, high, low, trade count, volume,
+ * value). "Adjusted opening price" is NOT captured — confirmed not
+ * available from bdstock.org's /latest endpoint at all.
  *
  * NOT part of the regular 15-min scrape cycle — this is a separate job,
  * triggered by its own GitHub Actions workflow (daily-close.yml).
@@ -63,7 +66,19 @@ async function main() {
 
       await DailyClose.findOneAndUpdate(
         { tradingCode: p.tradingCode, date },
-        { tradingCode: p.tradingCode, date, close, source },
+        {
+          tradingCode: p.tradingCode,
+          date,
+          close,
+          source,
+          ltp: p.ltp,
+          closep: p.closep,
+          high: p.high,
+          low: p.low,
+          tradeCount: p.tradeCount,
+          volume: p.volume,
+          valueMn: p.valueMn,
+        },
         { upsert: true, returnDocument: "after" },
       );
       saved++;
