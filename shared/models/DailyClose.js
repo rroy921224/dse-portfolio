@@ -1,14 +1,12 @@
 import mongoose from "mongoose";
 
 /**
- * One document per stock PER DAY (not per scrape cycle). Populated by a
- * separate daily job (worker/saveDailyClose.js), run once shortly after
- * market close, NOT by the regular 15-min price scraper.
- *
- * Field coverage note: "adjusted opening price" was requested but is NOT
- * provided by bdstock.org's /latest endpoint at all (confirmed by
- * inspecting the raw response) — so it's intentionally absent here. All
- * other requested daily fields ARE available and captured below.
+ * One document per stock PER DAY. Populated two ways:
+ *   1. worker/saveDailyClose.js — ongoing daily job, reads from the live
+ *      `Price` snapshot (cheap, no openp available).
+ *   2. worker/backfillDailyClose.js — one-time historical backfill using
+ *      bdstock.org's /historical endpoint (includes openp, ~2 years deep —
+ *      confirmed that's the actual limit of this data source, not 5 years).
  */
 const DailyCloseSchema = new mongoose.Schema(
   {
@@ -49,13 +47,20 @@ const DailyCloseSchema = new mongoose.Schema(
       // `source` above to know whether `close` used this or fell back.
       type: Number,
     },
+    openp: {
+      // Adjusted opening price. Only available via the /historical
+      // endpoint (used by the backfill script) — NOT available from
+      // /latest, so this stays null for days saved by the regular
+      // ongoing daily job.
+      type: Number,
+    },
     high: Number,
     low: Number,
     tradeCount: Number,
     volume: Number,
     valueMn: Number,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // One row per stock per day — re-running the job the same day upserts,

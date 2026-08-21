@@ -1,0 +1,33 @@
+name: Backfill Historical Daily Prices
+
+on:
+  workflow_dispatch: {}
+  # No schedule — this is a one-time (or occasional manual re-run) job,
+  # not part of the regular automated pipeline.
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    # ~395 stocks × ~400ms delay each ≈ 3-4 minutes minimum, plus request
+    # time — give it real headroom instead of the default timeout.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install shared dependencies
+        run: npm install
+        working-directory: shared
+
+      - name: Install worker dependencies
+        run: npm install
+        working-directory: worker
+
+      - name: Run backfill
+        run: node backfillDailyClose.js
+        working-directory: worker
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
