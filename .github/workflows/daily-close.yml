@@ -3,8 +3,7 @@ name: Save Daily Closing Prices
 on:
   schedule:
     # Once daily, 08:45 UTC = 2:45pm Bangladesh time — shortly after DSE's
-    # ~2:30pm close, giving a small buffer for the scraper's last run of
-    # the day to have landed. Sun–Thu only (day-of-week 0-4).
+    # ~2:30pm close. Sun-Thu only (day-of-week 0-4).
     - cron: "45 8 * * 0-4"
   workflow_dispatch:
     inputs:
@@ -16,6 +15,10 @@ on:
 jobs:
   save-daily-close:
     runs-on: ubuntu-latest
+    # Now loops all ~395 stocks via /historical (one request per stock,
+    # ~1-3s each) instead of reading the local Price snapshot — takes
+    # roughly 15-20 minutes, not seconds. Give it real headroom.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -36,7 +39,4 @@ jobs:
         working-directory: worker
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          # On schedule, this input doesn't exist -> defaults to "false"
-          # (real trading-day check enforced). On manual run, defaults to
-          # "true" per the input above -> always saves, for testing.
           FORCE_SAVE: ${{ github.event.inputs.force || 'false' }}

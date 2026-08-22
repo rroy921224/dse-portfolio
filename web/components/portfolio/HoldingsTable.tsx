@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import EditTransactionModal from "./EditTransactionModal";
 import AverageCalculatorModal from "@/components/shared/AverageCalculatorModal";
 
@@ -112,7 +113,15 @@ function HoldingRow({
         onClick={onToggle}
         className="border-t cursor-pointer hover:bg-gray-50"
       >
-        <td className="px-4 py-3 font-medium">{holding.tradingCode}</td>
+        <td className="px-4 py-3 font-medium">
+          <Link
+            href={`/stocks/${holding.tradingCode}`}
+            onClick={(e) => e.stopPropagation()}
+            className="hover:underline"
+          >
+            {holding.tradingCode}
+          </Link>
+        </td>
         <td className="px-4 py-3">{holding.quantity}</td>
         <td className="px-4 py-3">৳{holding.avgCost.toLocaleString()}</td>
         <td className="px-4 py-3">৳{holding.totalInvested.toLocaleString()}</td>

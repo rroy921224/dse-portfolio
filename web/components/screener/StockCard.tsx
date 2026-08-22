@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { timeAgo } from "@/lib/marketHours";
 import AverageCalculatorModal from "@/components/shared/AverageCalculatorModal";
 
@@ -64,7 +65,12 @@ export default function StockCard({
         ✕
       </button>
 
-      <p className="font-semibold">{tradingCode}</p>
+      <Link
+        href={`/stocks/${tradingCode}`}
+        className="font-semibold hover:underline"
+      >
+        {tradingCode}
+      </Link>
       {sector && <p className="text-xs text-gray-400 mb-2">{sector}</p>}
 
       {price ? (
