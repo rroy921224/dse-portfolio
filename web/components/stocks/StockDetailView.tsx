@@ -150,7 +150,13 @@ export default function StockDetailView({
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={30} />
               <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value: number) => [`৳${value}`, "Close"]} />
+              <Tooltip
+                formatter={(value) => {
+                  const numValue =
+                    typeof value === "number" ? value : Number(value);
+                  return [`৳${numValue}`, "Close"];
+                }}
+              />
               <Area
                 type="monotone"
                 dataKey="close"
