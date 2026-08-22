@@ -18,7 +18,7 @@ export default async function StockDetailPage({
   return (
     <>
       <Navbar />
-      <main className="max-w-5xl mx-auto p-6">
+      <main className="w-full px-6 py-6">
         <StockDetailView tradingCode={code.toUpperCase()} />
       </main>
     </>
