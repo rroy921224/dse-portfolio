@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { timeAgo } from "@/lib/marketHours";
-import AverageCalculatorModal from "./AverageCalculatorModal";
+import AverageCalculatorModal from "@/components/shared/AverageCalculatorModal";
 
 interface PriceData {
   ltp: number;
