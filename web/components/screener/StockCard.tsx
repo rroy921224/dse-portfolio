@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { timeAgo } from "@/lib/marketHours";
+import AverageCalculatorModal from "./AverageCalculatorModal";
 
 interface PriceData {
   ltp: number;
@@ -27,6 +29,7 @@ export default function StockCard({
   holding: HoldingData | null;
 }) {
   const queryClient = useQueryClient();
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const removeMutation = useMutation({
     mutationFn: async () => {
@@ -97,6 +100,22 @@ export default function StockCard({
             {plInfo.plPercent.toFixed(2)}%)
           </p>
         </div>
+      )}
+
+      <button
+        onClick={() => setShowCalculator(true)}
+        className="mt-3 w-full text-xs border rounded py-1.5 text-gray-600 hover:bg-gray-50"
+      >
+        🧮 Average Calculator
+      </button>
+
+      {showCalculator && (
+        <AverageCalculatorModal
+          tradingCode={tradingCode}
+          currentPrice={price?.ltp ?? 0}
+          holding={holding}
+          onClose={() => setShowCalculator(false)}
+        />
       )}
     </div>
   );

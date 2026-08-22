@@ -5,23 +5,21 @@ import { connectDB, Company, DailyClose } from "../shared/index.js";
 import { logger } from "./src/lib/logger.js";
 
 /**
- * ONE-TIME BACKFILL — run manually via GitHub Actions (or locally).
+ * ONE-TIME BACKFILL — run manually and LOCALLY.
  *
- * Loops through every company, fetches historical daily data from
- * bdstock.org's /historical endpoint, and upserts into DailyClose.
+ * Runs through ALL companies from #1 every time, unconditionally — no
+ * stock-level "already done, skip" pre-filter. Correctness over speed:
+ * a stock-level skip risks treating a PARTIALLY-saved stock (interrupted
+ * mid-run) as fully done and permanently skipping it with incomplete data.
  *
- * Confirmed limits of this data source (via debugHistoricalRange.js):
- *   - Only ~2 years of history actually exists (back to ~Aug 2024),
- *     regardless of how far back you ask.
- *   - One request per stock returns its FULL available history in one
- *     call — no need to chunk into smaller date ranges.
- *
- * Rate-limited with a delay between requests — this is a free, unofficial
- * API and 395 sequential requests deserves to be done politely, not blasted.
+ * Instead, safety comes from the per-DAY upsert on {tradingCode, date}:
+ * already-saved days get overwritten with the same data (harmless no-op
+ * in effect), missing days get inserted. Guaranteed no gaps, at the cost
+ * of re-fetching from the API for stocks already complete on every re-run.
  */
 
-const START_DATE = "2024-01-01"; // safely before the source's actual data start
-const DELAY_MS = 400; // pause between each stock's request
+const START_DATE = "2024-01-01";
+const DELAY_MS = 400;
 
 function todayDateString() {
   return new Date().toISOString().slice(0, 10);
@@ -39,10 +37,8 @@ function toNumber(val) {
 
 async function fetchHistoryForStock(tradingCode) {
   const url = `https://bdstock.org/v1/dse/historical?code=${tradingCode}&start=${START_DATE}&end=${todayDateString()}`;
-  const { data } = await axios.get(url, { timeout: 15_000 });
+  const { data } = await axios.get(url, { timeout: 30_000 });
   const rows = data?.data ?? [];
-
-  // Filter out the "No Day End Data" placeholder rows seen during testing
   return rows.filter((r) => r.DATE && r.DATE.trim() !== "");
 }
 
@@ -50,10 +46,12 @@ async function main() {
   await connectDB();
 
   const companies = await Company.find({}).lean();
-  logger.info(`Starting backfill for ${companies.length} companies...`);
+  logger.info(
+    `Starting backfill for ${companies.length} companies (from #1, no skipping)...`,
+  );
 
   let totalSaved = 0;
-  let totalSkipped = 0;
+  let totalSkippedRows = 0;
   let stocksProcessed = 0;
   let stocksFailed = 0;
 
@@ -64,7 +62,7 @@ async function main() {
       const rows = await fetchHistoryForStock(tradingCode);
 
       for (const row of rows) {
-        const date = row.DATE; // already "YYYY-MM-DD"
+        const date = row.DATE;
         const ltp = toNumber(row["LTP*"]);
         const closep = toNumber(row["CLOSEP*"]);
         const openp = toNumber(row["OPENP*"]);
@@ -79,10 +77,13 @@ async function main() {
         const source = useClosep ? "closep" : "ltp";
 
         if (typeof close !== "number" || close <= 0) {
-          totalSkipped++;
-          continue; // no usable price for this day at all
+          totalSkippedRows++;
+          continue;
         }
 
+        // Upsert on {tradingCode, date} — inserts if missing, overwrites
+        // with the same data (harmless) if already saved. This is what
+        // makes re-running safe without needing stock-level tracking.
         await DailyClose.findOneAndUpdate(
           { tradingCode, date },
           {
@@ -117,7 +118,7 @@ async function main() {
   }
 
   logger.info(
-    `Backfill complete. ${totalSaved} day-records saved, ${totalSkipped} skipped (no usable price), ${stocksFailed} stocks failed entirely.`,
+    `Backfill complete. ${totalSaved} day-records saved/updated, ${totalSkippedRows} rows skipped (no usable price), ${stocksFailed} stocks failed entirely.`,
   );
 
   await mongoose.disconnect();
