@@ -1,6 +1,44 @@
 import axios from "axios";
 
 /**
+ * Tests whether a single-day /historical request (start=end=today) is
+ * meaningfully faster than the multi-year request we timed yesterday
+ * (~100s). If this is fast (a few seconds), a daily job looping all 395
+ * stocks via /historical becomes feasible. If it's still ~100s, it's not
+ * — the slowness would be inherent to the endpoint itself, not the date
+ * range size, and we'd need a different approach for daily updates.
+ */
+
+const TEST_CODES = ["GP", "ACIFORMULA", "SQURPHARMA"]; // test a few, not just one
+const today = new Date().toISOString().slice(0, 10);
+
+async function testOne(code) {
+  const url = `https://bdstock.org/v1/dse/historical?code=${code}&start=${today}&end=${today}`;
+  const startTime = Date.now();
+  try {
+    const { data } = await axios.get(url, { timeout: 30_000 });
+    const elapsed = Date.now() - startTime;
+    console.log(
+      `${code}: ${elapsed}ms (${(elapsed / 1000).toFixed(1)}s) — ${data?.data?.length ?? 0} row(s)`,
+    );
+  } catch (err) {
+    const elapsed = Date.now() - startTime;
+    console.error(`${code}: FAILED after ${elapsed}ms — ${err.message}`);
+  }
+}
+
+async function main() {
+  console.log(
+    `Testing single-day requests (${today}) for ${TEST_CODES.length} stocks...\n`,
+  );
+  for (const code of TEST_CODES) {
+    await testOne(code);
+  }
+}
+
+main();
+
+/**
  * ONE-OFF DEBUG SCRIPT — not part of the app, just for inspecting what
  * bdstock.org's /historical endpoint actually returns before we build a
  * real backfill script around it. Delete or ignore after use.
@@ -41,7 +79,7 @@ main(); */
  * Usage: node debugHistoricalRange.js
  */
 
-const TEST_CODE = "GP";
+/* const TEST_CODE = "GP";
 
 async function testRange(label, start, end) {
   const url = `https://bdstock.org/v1/dse/historical?code=${TEST_CODE}&start=${start}&end=${end}`;
@@ -83,4 +121,4 @@ async function main() {
   await testRange("Very old narrow window (2018)", "2018-01-01", "2018-01-31");
 }
 
-main();
+main(); */
